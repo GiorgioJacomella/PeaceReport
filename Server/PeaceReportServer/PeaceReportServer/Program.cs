@@ -4,6 +4,9 @@ using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using PeaceReportServer.Services;
 using PeaceReportServer.Settings;
+using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 
 namespace PeaceReportServer
 {
@@ -47,6 +50,7 @@ namespace PeaceReportServer
             }
 
             app.UseHttpsRedirection();
+            app.UseStaticFiles();
             app.UseAuthorization();
 
             app.MapControllers();

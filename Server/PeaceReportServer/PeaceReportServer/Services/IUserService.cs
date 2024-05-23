@@ -11,6 +11,6 @@ namespace PeaceReportServer.Services
         Task<User> GetUserByUsernameAsync(string username);
         Task<User> GetUserByUsernameOrEmailAsync(string identifier);
         Task SaveSignupAsync(SignupRequestDto request);
-        Task UpdateUserTokenAsync(string userId, string token); // New method definition
+        Task UpdateUserTokenAsync(string userId, string token);
     }
 }
