@@ -9,6 +9,5 @@ namespace PeaceReportServer.DTOs
         public List<IFormFile> Images { get; set; }
         public List<string> Texts { get; set; }
         public List<int> ContentOrder { get; set; }
-        public string JwtToken { get; set; }
     }
 }

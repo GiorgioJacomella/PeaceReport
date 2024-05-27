@@ -37,16 +37,16 @@ namespace PeaceReportServer.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> UploadArticle([FromForm] ArticleDTO dto)
+        public async Task<IActionResult> UploadArticle([FromForm] ArticleDTO dto, string authorization)
         {
-            if (dto == null || string.IsNullOrEmpty(dto.Title) || dto.ContentOrder == null || dto.Images == null || dto.Texts == null)
+            if (string.IsNullOrEmpty(authorization) || !authorization.StartsWith("Bearer "))
             {
-                _logger.LogWarning("Invalid form submission.");
-                return BadRequest("Invalid form submission.");
+                return Unauthorized("Invalid authorization header.");
             }
 
+            var token = authorization.Substring("Bearer ".Length).Trim();
             var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.ReadJwtToken(dto.JwtToken);
+            var jwtToken = tokenHandler.ReadJwtToken(token);
 
             var userIdClaim = jwtToken?.Claims?.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Sub);
             if (userIdClaim == null)
@@ -56,12 +56,17 @@ namespace PeaceReportServer.Controllers
             }
             var authorId = userIdClaim.Value;
 
-            // Check if the user is a journalist
             var author = await _users.Find(u => u.Id == authorId).FirstOrDefaultAsync();
             if (author == null || !author.Journalist)
             {
                 _logger.LogWarning("User {AuthorId} is not authorized to create articles.", authorId);
                 return Forbid("You are not authorized to create articles.");
+            }
+
+            if (dto == null || string.IsNullOrEmpty(dto.Title) || dto.ContentOrder == null || dto.Images == null || dto.Texts == null)
+            {
+                _logger.LogWarning("Invalid form submission.");
+                return BadRequest("Invalid form submission.");
             }
 
             var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads", "articleGraphics");
@@ -114,6 +119,102 @@ namespace PeaceReportServer.Controllers
             return Ok(new { message = "Article uploaded successfully.", articleId = article.Id.ToString() });
         }
 
+        [HttpPut("{id:length(24)}")]
+        public async Task<IActionResult> UpdateArticle(string id, [FromForm] UpdateArticleDTO dto, string authorization)
+        {
+            if (string.IsNullOrEmpty(authorization) || !authorization.StartsWith("Bearer "))
+            {
+                return Unauthorized("Invalid authorization header.");
+            }
+
+            var token = authorization.Substring("Bearer ".Length).Trim();
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var jwtToken = tokenHandler.ReadJwtToken(token);
+
+            var userIdClaim = jwtToken?.Claims?.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Sub);
+            if (userIdClaim == null)
+            {
+                return Unauthorized("Invalid JWT token.");
+            }
+            var userId = userIdClaim.Value;
+
+            var article = await _articles.Find(a => a.Id == ObjectId.Parse(id)).FirstOrDefaultAsync();
+            if (article == null)
+            {
+                return NotFound("Article not found.");
+            }
+
+            if (article.AuthorId != userId)
+            {
+                return Forbid("You are not authorized to update this article.");
+            }
+
+            var updates = new List<UpdateDefinition<Article>>();
+            var contentItems = new List<ContentItem>();
+
+            if (dto.Title != null)
+            {
+                updates.Add(Builders<Article>.Update.Set(a => a.Title, dto.Title));
+            }
+
+            if (dto.ContentOrder != null)
+            {
+                int textIndex = 0, imageIndex = 0;
+
+                var uploadsFolder = Path.Combine(_env.WebRootPath, "uploads", "articleGraphics");
+
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                    _logger.LogInformation("Uploads folder created at {UploadsFolder}.", uploadsFolder);
+                }
+
+                foreach (var order in dto.ContentOrder)
+                {
+                    if (order == 0 && dto.Texts != null && textIndex < dto.Texts.Count)
+                    {
+                        contentItems.Add(new ContentItem { Type = "text", Value = dto.Texts[textIndex++] });
+                    }
+                    else if (order == 1)
+                    {
+                        if (dto.Images != null && imageIndex < dto.Images.Count)
+                        {
+                            var file = dto.Images[imageIndex++];
+                            if (file != null && file.Length > 0)
+                            {
+                                var fileName = $"{Path.GetFileNameWithoutExtension(file.FileName)}_{Path.GetRandomFileName()}{Path.GetExtension(file.FileName)}";
+                                var filePath = Path.Combine(uploadsFolder, fileName);
+
+                                using (var stream = new FileStream(filePath, FileMode.Create))
+                                {
+                                    await file.CopyToAsync(stream);
+                                }
+
+                                var fileUrl = $"{Request.Scheme}://{Request.Host}/uploads/articleGraphics/{fileName}";
+                                contentItems.Add(new ContentItem { Type = "image", Value = fileUrl });
+                            }
+                        }
+                        else if (dto.ImageUrls != null && imageIndex < dto.ImageUrls.Count)
+                        {
+                            contentItems.Add(new ContentItem { Type = "image", Value = dto.ImageUrls[imageIndex++] });
+                        }
+                    }
+                }
+
+                updates.Add(Builders<Article>.Update.Set(a => a.Content, contentItems));
+            }
+
+            if (updates.Any())
+            {
+                var updateDefinition = Builders<Article>.Update.Combine(updates);
+                await _articles.UpdateOneAsync(a => a.Id == ObjectId.Parse(id), updateDefinition);
+            }
+
+            _logger.LogInformation("Article {ArticleId} updated successfully by user {UserId}.", id, userId);
+
+            return Ok(new { message = "Article updated successfully." });
+        }
+
         [HttpGet]
         public async Task<IActionResult> GetArticles()
         {
@@ -160,6 +261,55 @@ namespace PeaceReportServer.Controllers
             };
 
             return Ok(articleDto);
+        }
+
+        [HttpDelete("{id:length(24)}")]
+        public async Task<IActionResult> DeleteArticle(string id, string authorization)
+        {
+            if (string.IsNullOrEmpty(authorization) || !authorization.StartsWith("Bearer "))
+            {
+                return Unauthorized("Invalid authorization header.");
+            }
+
+            var token = authorization.Substring("Bearer ".Length).Trim();
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var jwtToken = tokenHandler.ReadJwtToken(token);
+
+            var userIdClaim = jwtToken?.Claims?.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Sub);
+            if (userIdClaim == null)
+            {
+                return Unauthorized("Invalid JWT token.");
+            }
+            var userId = userIdClaim.Value;
+
+            var article = await _articles.Find(a => a.Id == ObjectId.Parse(id)).FirstOrDefaultAsync();
+            if (article == null)
+            {
+                return NotFound("Article not found.");
+            }
+
+            if (article.AuthorId != userId)
+            {
+                return Forbid("You are not authorized to delete this article.");
+            }
+
+            foreach (var contentItem in article.Content)
+            {
+                if (contentItem.Type == "image")
+                {
+                    var filePath = Path.Combine(_env.WebRootPath, "uploads", "articleGraphics", Path.GetFileName(contentItem.Value));
+                    if (System.IO.File.Exists(filePath))
+                    {
+                        System.IO.File.Delete(filePath);
+                    }
+                }
+            }
+
+            await _articles.DeleteOneAsync(a => a.Id == ObjectId.Parse(id));
+
+            _logger.LogInformation("Article {ArticleId} deleted successfully by user {UserId}.", id, userId);
+
+            return Ok(new { message = "Article deleted successfully." });
         }
     }
 }
