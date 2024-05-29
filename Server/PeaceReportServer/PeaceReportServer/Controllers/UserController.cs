@@ -112,6 +112,25 @@ namespace PeaceReportServer.Controllers
             return Ok(new { message = "Password changed successfully." });
         }
 
+        [HttpDelete("delete")]
+        public async Task<IActionResult> DeleteUser(string authorization)
+        {
+            var userId = GetUserIdFromAuthorizationHeader(authorization);
+            if (userId == null)
+            {
+                return Unauthorized("Invalid JWT token.");
+            }
+
+            var deleteResult = await _users.DeleteOneAsync(u => u.Id == userId);
+
+            if (deleteResult.DeletedCount == 0)
+            {
+                return NotFound("User not found.");
+            }
+
+            return Ok(new { message = "User account deleted successfully." });
+        }
+
         private string GetUserIdFromAuthorizationHeader(string authorization)
         {
             if (string.IsNullOrEmpty(authorization) || !authorization.StartsWith("Bearer "))
