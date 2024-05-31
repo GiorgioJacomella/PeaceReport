@@ -4,7 +4,6 @@ namespace PeaceReportServer.DTOs
 {
     public class SignupRequestDto
     {
-        public string Id { get; set; }
 
         [Required(ErrorMessage = "Email is required")]
         [EmailAddress(ErrorMessage = "Invalid Email Address")]

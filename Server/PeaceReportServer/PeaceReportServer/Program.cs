@@ -7,6 +7,7 @@ using PeaceReportServer.Settings;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 
 namespace PeaceReportServer
 {
@@ -39,6 +40,15 @@ namespace PeaceReportServer
             // Register UserService to make it available for dependency injection across the application.
             builder.Services.AddScoped<IUserService, UserService>();
 
+            // Add CORS policy to allow requests from http://localhost:3000
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowLocalhost3000",
+                    builder => builder.WithOrigins("http://localhost:3000")
+                                      .AllowAnyMethod()
+                                      .AllowAnyHeader());
+            });
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -52,6 +62,9 @@ namespace PeaceReportServer
             app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseAuthorization();
+
+            // Enable CORS for the specific origin
+            app.UseCors("AllowLocalhost3000");
 
             app.MapControllers();
 
