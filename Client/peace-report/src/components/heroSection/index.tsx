@@ -1,5 +1,5 @@
 import React from 'react';
-import PublicButton from '../buttons';
+import PublicButton from '../buttons/publicButton';
 
 
 const HeroSection: React.FC<> = () => {

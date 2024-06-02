@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import PublicNav from '@/src/components/navBars';
-import { PublicTextInput, PublicCheckboxInput } from '@/src/components/forms';
-import PublicButton from '@/src/components/buttons';
-import SignupModal from '@/src/components/modals';
+import PublicNav from '@/src/components/navBars/PublicNav';
+import { PublicTextInput } from '@/src/components/forms/PublicTextInput';
+import { PublicCheckboxInput } from '@/src/components/forms/PublicCheckboxInput';
+import PublicButton from '@/src/components/buttons/publicButton';
+import SignupModal from '@/src/components/modals/SignupModal';
 import { SignupData, SignupResponse, SignupAPI } from '@/src/api';
 
 const Signup: React.FC = () => {

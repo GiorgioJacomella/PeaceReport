@@ -6,7 +6,7 @@ const MyView: React.FC = () => {
     <main className="min-h-screen flex flex-col">
       <Nav />
       <div className="flex-grow flex items-center justify-center p-4">
-        <h1>News Here</h1>
+        <h1>Read an Article</h1>
       </div>
     </main>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import PublicNav from '../components/navBars/index';
+import PublicNav from '../components/navBars/PublicNav';
 import HeroSection from '../components/heroSection';
 
 const Home: React.FC = () => {

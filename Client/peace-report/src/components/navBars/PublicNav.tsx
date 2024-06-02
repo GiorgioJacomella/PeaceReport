@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import PublicButton from '../buttons';
+import PublicButton from '@/src/components/buttons/publicButton';
 
 type NavbarProps = {};
 
