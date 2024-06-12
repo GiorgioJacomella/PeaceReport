@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+
 interface TextInputProps {
   id?: string;
   type?: string;
@@ -7,7 +8,7 @@ interface TextInputProps {
   required?: boolean;
   value?: string;
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  name?: string; // Add name prop
+  name?: string;
 }
 
 const PublicTextInput: React.FC<TextInputProps> = ({
@@ -18,7 +19,7 @@ const PublicTextInput: React.FC<TextInputProps> = ({
   required,
   value,
   onChange,
-  name, // Add name prop
+  name,
 }) => {
   const [inputType, setInputType] = useState(type);
   const isPassword = type === 'password';
@@ -37,7 +38,7 @@ const PublicTextInput: React.FC<TextInputProps> = ({
       <div className="relative flex-1">
         <input
           id={id}
-          name={name} // Use name prop
+          name={name}
           type={inputType}
           placeholder={placeholder}
           className="w-full text-lg border-2 border-sky-500 rounded-md p-2 focus:ring-2 focus:ring-sky-500 focus:outline-none text-black"
@@ -59,5 +60,4 @@ const PublicTextInput: React.FC<TextInputProps> = ({
   );
 };
 
-
-export { PublicTextInput };
+export default PublicTextInput;

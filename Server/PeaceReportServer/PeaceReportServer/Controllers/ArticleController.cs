@@ -22,44 +22,63 @@ namespace PeaceReportServer.Controllers
     {
         private readonly IMongoCollection<Article> _articles;
         private readonly IMongoCollection<User> _users;
-        private readonly IJwtTokenService _jwtTokenService;
         private readonly ILogger<ArticleController> _logger;
         private readonly IWebHostEnvironment _env;
 
-        public ArticleController(IOptions<MongoDBSettings> mongoDBSettings, IMongoClient mongoClient, IJwtTokenService jwtTokenService, ILogger<ArticleController> logger, IWebHostEnvironment env)
+        public ArticleController(IOptions<MongoDBSettings> mongoDBSettings, IMongoClient mongoClient, ILogger<ArticleController> logger, IWebHostEnvironment env)
         {
             var database = mongoClient.GetDatabase(mongoDBSettings.Value.DatabaseName);
             _articles = database.GetCollection<Article>("Articles");
             _users = database.GetCollection<User>("UserData");
-            _jwtTokenService = jwtTokenService;
             _logger = logger;
             _env = env;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> UploadArticle([FromForm] ArticleDTO dto, string authorization)
+        private async Task<User> ValidateToken(string token)
         {
-            if (string.IsNullOrEmpty(authorization) || !authorization.StartsWith("Bearer "))
+            if (string.IsNullOrEmpty(token) || !token.StartsWith("Bearer "))
             {
-                return Unauthorized("Invalid authorization header.");
+                _logger.LogWarning("Invalid authorization header.");
+                return null;
             }
 
-            var token = authorization.Substring("Bearer ".Length).Trim();
+            var jwtToken = token.Substring("Bearer ".Length).Trim();
             var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.ReadJwtToken(token);
-
-            var userIdClaim = jwtToken?.Claims?.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Sub);
-            if (userIdClaim == null)
+            JwtSecurityToken jwtSecurityToken;
+            try
+            {
+                jwtSecurityToken = tokenHandler.ReadJwtToken(jwtToken);
+            }
+            catch
             {
                 _logger.LogWarning("Invalid JWT token.");
-                return Unauthorized("Invalid JWT token.");
+                return null;
             }
-            var authorId = userIdClaim.Value;
 
-            var author = await _users.Find(u => u.Id == authorId).FirstOrDefaultAsync();
-            if (author == null || !author.Journalist)
+            var userIdClaim = jwtSecurityToken?.Claims?.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Sub);
+            if (userIdClaim == null)
             {
-                _logger.LogWarning("User {AuthorId} is not authorized to create articles.", authorId);
+                _logger.LogWarning("User ID claim not found in token.");
+                return null;
+            }
+
+            var userId = userIdClaim.Value;
+            var user = await _users.Find(u => u.Id == userId && u.Token == jwtToken).FirstOrDefaultAsync();
+            if (user == null)
+            {
+                _logger.LogWarning("User not found or token mismatch.");
+                return null;
+            }
+
+            return user;
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UploadArticle([FromForm] ArticleDTO dto, [FromHeader(Name = "Authorization")] string authorization)
+        {
+            var user = await ValidateToken(authorization);
+            if (user == null || !user.Journalist)
+            {
                 return Forbid("You are not authorized to create articles.");
             }
 
@@ -108,35 +127,26 @@ namespace PeaceReportServer.Controllers
             var article = new Article
             {
                 Title = dto.Title,
-                AuthorId = authorId,
+                AuthorId = user.Id,
                 Content = contentItems
             };
 
             await _articles.InsertOneAsync(article);
 
-            _logger.LogInformation("Article uploaded successfully by user {AuthorId}. Article ID: {ArticleId}", authorId, article.Id);
+            _logger.LogInformation("Article uploaded successfully by user {AuthorId}. Article ID: {ArticleId}", user.Id, article.Id);
 
             return Ok(new { message = "Article uploaded successfully.", articleId = article.Id.ToString() });
         }
 
+
         [HttpPut("{id:length(24)}")]
-        public async Task<IActionResult> UpdateArticle(string id, [FromForm] UpdateArticleDTO dto, string authorization)
+        public async Task<IActionResult> UpdateArticle(string id, [FromForm] UpdateArticleDTO dto, [FromHeader(Name = "Authorization")] string authorization)
         {
-            if (string.IsNullOrEmpty(authorization) || !authorization.StartsWith("Bearer "))
+            var user = await ValidateToken(authorization);
+            if (user == null)
             {
-                return Unauthorized("Invalid authorization header.");
+                return Forbid("You are not authorized to update articles.");
             }
-
-            var token = authorization.Substring("Bearer ".Length).Trim();
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.ReadJwtToken(token);
-
-            var userIdClaim = jwtToken?.Claims?.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Sub);
-            if (userIdClaim == null)
-            {
-                return Unauthorized("Invalid JWT token.");
-            }
-            var userId = userIdClaim.Value;
 
             var article = await _articles.Find(a => a.Id == ObjectId.Parse(id)).FirstOrDefaultAsync();
             if (article == null)
@@ -144,7 +154,7 @@ namespace PeaceReportServer.Controllers
                 return NotFound("Article not found.");
             }
 
-            if (article.AuthorId != userId)
+            if (article.AuthorId != user.Id)
             {
                 return Forbid("You are not authorized to update this article.");
             }
@@ -210,7 +220,7 @@ namespace PeaceReportServer.Controllers
                 await _articles.UpdateOneAsync(a => a.Id == ObjectId.Parse(id), updateDefinition);
             }
 
-            _logger.LogInformation("Article {ArticleId} updated successfully by user {UserId}.", id, userId);
+            _logger.LogInformation("Article {ArticleId} updated successfully by user {UserId}.", id, user.Id);
 
             return Ok(new { message = "Article updated successfully." });
         }
@@ -264,23 +274,13 @@ namespace PeaceReportServer.Controllers
         }
 
         [HttpDelete("{id:length(24)}")]
-        public async Task<IActionResult> DeleteArticle(string id, string authorization)
+        public async Task<IActionResult> DeleteArticle(string id, [FromHeader(Name = "Authorization")] string authorization)
         {
-            if (string.IsNullOrEmpty(authorization) || !authorization.StartsWith("Bearer "))
+            var user = await ValidateToken(authorization);
+            if (user == null)
             {
-                return Unauthorized("Invalid authorization header.");
+                return Forbid("You are not authorized to delete articles.");
             }
-
-            var token = authorization.Substring("Bearer ".Length).Trim();
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.ReadJwtToken(token);
-
-            var userIdClaim = jwtToken?.Claims?.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Sub);
-            if (userIdClaim == null)
-            {
-                return Unauthorized("Invalid JWT token.");
-            }
-            var userId = userIdClaim.Value;
 
             var article = await _articles.Find(a => a.Id == ObjectId.Parse(id)).FirstOrDefaultAsync();
             if (article == null)
@@ -288,7 +288,7 @@ namespace PeaceReportServer.Controllers
                 return NotFound("Article not found.");
             }
 
-            if (article.AuthorId != userId)
+            if (article.AuthorId != user.Id)
             {
                 return Forbid("You are not authorized to delete this article.");
             }
@@ -307,7 +307,7 @@ namespace PeaceReportServer.Controllers
 
             await _articles.DeleteOneAsync(a => a.Id == ObjectId.Parse(id));
 
-            _logger.LogInformation("Article {ArticleId} deleted successfully by user {UserId}.", id, userId);
+            _logger.LogInformation("Article {ArticleId} deleted successfully by user {UserId}.", id, user.Id);
 
             return Ok(new { message = "Article deleted successfully." });
         }

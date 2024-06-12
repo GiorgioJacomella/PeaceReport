@@ -1,13 +1,13 @@
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Hosting;
 using MongoDB.Driver;
 using PeaceReportServer.Services;
 using PeaceReportServer.Settings;
-using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Cors.Infrastructure;
+using Microsoft.Extensions.Options;
 
 namespace PeaceReportServer
 {
@@ -46,7 +46,8 @@ namespace PeaceReportServer
                 options.AddPolicy("AllowLocalhost3000",
                     builder => builder.WithOrigins("http://localhost:3000")
                                       .AllowAnyMethod()
-                                      .AllowAnyHeader());
+                                      .AllowAnyHeader()
+                                      .AllowCredentials());
             });
 
             var app = builder.Build();
@@ -61,10 +62,13 @@ namespace PeaceReportServer
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
-            app.UseAuthorization();
+            app.UseRouting(); // Ensure routing is used before authentication and authorization
 
             // Enable CORS for the specific origin
             app.UseCors("AllowLocalhost3000");
+
+            app.UseAuthentication(); // If you have authentication middleware
+            app.UseAuthorization();
 
             app.MapControllers();
 

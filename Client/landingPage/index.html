@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PeaceReport</title>
+    <link href="styles.css" rel="stylesheet"/>
+    <link rel="icon" type="image/x-icon" href="favicon.ico"/>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <div class="logo">
+                <a href="index.html"><img src="logo.png" alt="PeaceReport Logo"></a>
+            </div>
+            <div class="menu-icon" onclick="toggleMenu()">
+                <div class="fa">&#9776;</div>
+            </div>
+            <ul class="nav-links">
+                <li><a class="menuItem" href="index.html">HOME</a></li>
+                <li><a class="menuItem" href="#main-content">ABOUT</a></li>
+                <li><a class="menuItem" href="https://www.linkedin.com/in/giorgio-jacomella-095062231/" target="_blank">CONTACT</a></li>
+            </ul>
+        </div>
+    </nav>
+    <header>
+        <div class="hero">
+            <h1>Empower Truth:</h1>
+            <h2>Your Voice, Our Platform!</h2>
+            <a id="readMoreBtn" href="#main-content" class="btn">CLICK TO READ MORE!</a>
+        </div>
+    </header>
+    <main id="main-content">
+        <ul class="cards">
+            <li>
+                <div class="card">
+                    <img src="./HeroImmage01.png" alt="Image 1">
+                    <h2>Who we are?</h2>
+                    <p>Peace-Report began as a humble school project with a profound mission: to give a voice to thousands of individuals worldwide who lack connections to major media companies. Every story matters, and through Peace-Repost, we aim to amplify the personal narratives that deserve to be heard, shining a light on the diverse experiences and perspectives that make up our global community.</p>
+                </div>
+            </li>
+            <li>
+                <div class="card">
+                    <img src="./HeroImmage02.png" alt="Image 2">
+                    <h2>Where are we now?</h2>
+                    <p>Currently, an offline prototype of the Peace Report platform exists. This prototype is fully open-source, aligning with our commitment to transparency and community collaboration. However, it is not yet ready for public release. Significant work remains to enhance security measures and refine the user experience. These critical checks and improvements are our current focus to ensure that Peace Report will be a secure, seamless, and reliable service when it becomes available to the public.</p>
+                </div>
+            </li>
+            <li>
+                <div class="card">
+                    <img src="./HeroImmage03.png" alt="Image 3">
+                    <h2>Our future</h2>
+                    <p>The next steps for Peace Report include connecting with independent journalists to bring diverse voices to the platform, conducting thorough security checks, and finding advertisers interested in supporting our mission. These actions are essential for creating a secure, vibrant, and sustainable platform for sharing impactful stories worldwide.
+                    </p>
+                </div>
+            </li>
+        </ul>
+    </main>
+    <footer>
+        <ul>
+            <li><a href="mailto:jacomellagiorgio@gmail.com">Contact Developers</a></li>
+            <li><a href="https://www.linkedin.com/in/giorgio-jacomella-095062231/" target="_blank">Linkedin</a></li>
+            <li><a href="https://github.com/GiorgioJacomella/PeaceReport" target="_blank">Github</a></li>
+        </ul>
+    </footer>
+    
+
+    <script>
+        document.getElementById('readMoreBtn').addEventListener('click', function(event) {
+            event.preventDefault();
+            document.querySelector('#main-content').scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+
+        function toggleMenu() {
+            var menu = document.querySelector('.nav-links');
+            menu.classList.toggle('active');
+        }
+    </script>
+</body>
+</html>

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
+import { useRouter } from 'next/router';
 import PublicNav from '@/src/components/navBars/PublicNav';
-import { PublicTextInput } from '@/src/components/forms/PublicTextInput';
-import { PublicCheckboxInput } from '@/src/components/forms/PublicCheckboxInput';
-import PublicButton from '@/src/components/buttons/publicButton';
-import SignupModal from '@/src/components/modals/SignupModal';
+import PublicTextInput from '@/src/components/forms/PublicTextInput';
+import PublicCheckboxInput from '@/src/components/forms/PublicCheckboxInput';
+import PublicButton from '@/src/components/buttons/PublicButton';
 import { SignupData, SignupResponse, SignupAPI } from '@/src/api';
 
 const Signup: React.FC = () => {
@@ -20,7 +20,7 @@ const Signup: React.FC = () => {
   const [repeatPassword, setRepeatPassword] = useState<string>('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState<boolean>(false);
+  const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -41,24 +41,15 @@ const Signup: React.FC = () => {
 
     if (formData.password !== repeatPassword) {
       setError("Passwords do not match");
-      setShowModal(true);
       return;
     }
 
     try {
       const response: SignupResponse = await SignupAPI(formData);
       setMessage(response.message);
-      setShowModal(true);
     } catch (err) {
       setError(err.message);
-      setShowModal(true);
     }
-  };
-
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setMessage(null);
-    setError(null);
   };
 
   return (
@@ -75,6 +66,8 @@ const Signup: React.FC = () => {
         <div className="relative z-10 flex flex-col items-center justify-center w-full md:w-1/2 h-2/3 md:h-full">
           <form className="flex flex-col items-center w-11/12 md:w-3/4 p-6 bg-white rounded-md shadow-lg space-y-4" onSubmit={handleSubmit}>
             <h1 className="text-2xl">SIGN-UP NOW:</h1>
+            {error && <div className="text-red-500 mt-4">{error}</div>}
+            {message && <div className="text-green-500 mt-4">{message}</div>}
             <PublicTextInput id="name" name="name" type="text" placeholder="Example Journalist" label="Name*: " value={formData.name} onChange={handleChange} required />
             <PublicTextInput id="username" name="username" type="text" placeholder="ExampleUserName" label="Username*: " value={formData.username} onChange={handleChange} required />
             <PublicTextInput id="email" name="email" type="email" placeholder="example@yourmail.com" label="Email*: " value={formData.email} onChange={handleChange} required />
@@ -87,13 +80,6 @@ const Signup: React.FC = () => {
           </form>
         </div>
       </div>
-      {showModal && (
-        <SignupModal
-          message={message}
-          error={error}
-          onClose={handleCloseModal}
-        />
-      )}
     </main>
   );
 };

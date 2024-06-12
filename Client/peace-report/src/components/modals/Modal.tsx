@@ -1,26 +1,65 @@
 import React from 'react';
-import PublicButton from '@/src/components/buttons/publicButton';
+import { useRouter } from 'next/router';
+import PublicButton from '@/src/components/buttons/PublicButton';
 
-interface ErrorModalProps {
-  errorMessage: string;
+interface ModalProps {
+  type: 'error' | 'success' | 'info';
+  message: string;
   onClose: () => void;
+  redirectPath?: string;
+  redirectLabel?: string;
 }
 
-const ErrorModal: React.FC<ErrorModalProps> = ({ errorMessage, onClose }) => {
+const Modal: React.FC<ModalProps> = ({ type, message, onClose, redirectPath, redirectLabel }) => {
+  const router = useRouter();
+  
+  const handleRedirect = () => {
+    if (redirectPath) {
+      router.push(redirectPath);
+      onClose();
+    }
+  };
+
+  const getColor = () => {
+    switch (type) {
+      case 'error':
+        return 'text-red-500';
+      case 'success':
+        return 'text-green-500';
+      case 'info':
+        return 'text-blue-500';
+      default:
+        return '';
+    }
+  };
+
+  const getTitle = () => {
+    switch (type) {
+      case 'error':
+        return 'Error';
+      case 'success':
+        return 'Success';
+      case 'info':
+        return 'Information';
+      default:
+        return '';
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white p-6 rounded-md shadow-lg text-center space-y-4">
-        <div className="text-red-500">
-          <h2 className="text-xl font-semibold">Error</h2>
-          <p>{errorMessage}</p>
+        <div className={getColor()}>
+          <h2 className="text-xl font-semibold">{getTitle()}</h2>
+          <p>{message}</p>
         </div>
-        <a href="/login">
-          <PublicButton text="Go to Login" />
-        </a>
+        {redirectPath && (
+          <PublicButton text={redirectLabel || 'Go'} onClick={handleRedirect} />
+        )}
         <PublicButton text="Close" onClick={onClose} />
       </div>
     </div>
   );
 };
 
-export default ErrorModal;
+export default Modal;

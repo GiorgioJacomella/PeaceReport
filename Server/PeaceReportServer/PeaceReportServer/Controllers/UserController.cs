@@ -2,10 +2,9 @@
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using PeaceReportServer.Models;
-using PeaceReportServer.Services;
 using PeaceReportServer.Settings;
-using PeaceReportServer.Utilities;
 using System.IdentityModel.Tokens.Jwt;
+using PeaceReportServer.Utilities;
 using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Threading.Tasks;
@@ -17,30 +16,61 @@ namespace PeaceReportServer.Controllers
     public class UserController : ControllerBase
     {
         private readonly IMongoCollection<User> _users;
-        private readonly IJwtTokenService _jwtTokenService;
         private readonly ILogger<UserController> _logger;
 
-        public UserController(IOptions<MongoDBSettings> mongoDBSettings, IMongoClient mongoClient, IJwtTokenService jwtTokenService, ILogger<UserController> logger)
+        public UserController(IOptions<MongoDBSettings> mongoDBSettings, IMongoClient mongoClient, ILogger<UserController> logger)
         {
             var database = mongoClient.GetDatabase(mongoDBSettings.Value.DatabaseName);
             _users = database.GetCollection<User>("UserData");
-            _jwtTokenService = jwtTokenService;
             _logger = logger;
         }
 
-        [HttpGet("userinfo")]
-        public async Task<IActionResult> GetUserInfo(string authorization)
+        private async Task<User> ValidateToken(string token)
         {
-            var userId = GetUserIdFromAuthorizationHeader(authorization);
-            if (userId == null)
+            if (string.IsNullOrEmpty(token) || !token.StartsWith("Bearer "))
             {
-                return Unauthorized("Invalid JWT token.");
+                _logger.LogWarning("Invalid authorization header.");
+                return null;
             }
 
-            var user = await _users.Find(u => u.Id == userId).FirstOrDefaultAsync();
+            var jwtToken = token.Substring("Bearer ".Length).Trim();
+            var tokenHandler = new JwtSecurityTokenHandler();
+            JwtSecurityToken jwtSecurityToken;
+            try
+            {
+                jwtSecurityToken = tokenHandler.ReadJwtToken(jwtToken);
+            }
+            catch
+            {
+                _logger.LogWarning("Invalid JWT token.");
+                return null;
+            }
+
+            var userIdClaim = jwtSecurityToken?.Claims?.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Sub);
+            if (userIdClaim == null)
+            {
+                _logger.LogWarning("User ID claim not found in token.");
+                return null;
+            }
+
+            var userId = userIdClaim.Value;
+            var user = await _users.Find(u => u.Id == userId && u.Token == jwtToken).FirstOrDefaultAsync();
             if (user == null)
             {
-                return NotFound("User not found.");
+                _logger.LogWarning("User not found or token mismatch.");
+                return null;
+            }
+
+            return user;
+        }
+
+        [HttpGet("userinfo")]
+        public async Task<IActionResult> GetUserInfo([FromHeader(Name = "Authorization")] string authorization)
+        {
+            var user = await ValidateToken(authorization);
+            if (user == null)
+            {
+                return Unauthorized("Invalid JWT token.");
             }
 
             var userInfo = new
@@ -57,18 +87,12 @@ namespace PeaceReportServer.Controllers
         }
 
         [HttpPut("userinfo")]
-        public async Task<IActionResult> UpdateUserInfo(string authorization, [FromBody] UserUpdateDto updateDto)
+        public async Task<IActionResult> UpdateUserInfo([FromHeader(Name = "Authorization")] string authorization, [FromBody] UserUpdateDto updateDto)
         {
-            var userId = GetUserIdFromAuthorizationHeader(authorization);
-            if (userId == null)
-            {
-                return Unauthorized("Invalid JWT token.");
-            }
-
-            var user = await _users.Find(u => u.Id == userId).FirstOrDefaultAsync();
+            var user = await ValidateToken(authorization);
             if (user == null)
             {
-                return NotFound("User not found.");
+                return Unauthorized("Invalid JWT token.");
             }
 
             var updateDefinition = Builders<User>.Update
@@ -79,24 +103,18 @@ namespace PeaceReportServer.Controllers
                 .Set(u => u.RecieveNewsletter, updateDto.RecieveNewsletter)
                 .Set(u => u.AgreeWithTermsConditions, updateDto.AgreeWithTermsConditions);
 
-            await _users.UpdateOneAsync(u => u.Id == userId, updateDefinition);
+            await _users.UpdateOneAsync(u => u.Id == user.Id, updateDefinition);
 
             return Ok(new { message = "User information updated successfully." });
         }
 
         [HttpPut("password")]
-        public async Task<IActionResult> ChangePassword(string authorization, [FromBody] ChangePasswordDto changePasswordDto)
+        public async Task<IActionResult> ChangePassword([FromHeader(Name = "Authorization")] string authorization, [FromBody] ChangePasswordDto changePasswordDto)
         {
-            var userId = GetUserIdFromAuthorizationHeader(authorization);
-            if (userId == null)
-            {
-                return Unauthorized("Invalid JWT token.");
-            }
-
-            var user = await _users.Find(u => u.Id == userId).FirstOrDefaultAsync();
+            var user = await ValidateToken(authorization);
             if (user == null)
             {
-                return NotFound("User not found.");
+                return Unauthorized("Invalid JWT token.");
             }
 
             if (!Hashing.VerifyPassword(changePasswordDto.OldPassword, user.Password))
@@ -107,21 +125,21 @@ namespace PeaceReportServer.Controllers
             var newPasswordHash = Hashing.HashPassword(changePasswordDto.NewPassword);
             var updateDefinition = Builders<User>.Update.Set(u => u.Password, newPasswordHash);
 
-            await _users.UpdateOneAsync(u => u.Id == userId, updateDefinition);
+            await _users.UpdateOneAsync(u => u.Id == user.Id, updateDefinition);
 
             return Ok(new { message = "Password changed successfully." });
         }
 
         [HttpDelete("delete")]
-        public async Task<IActionResult> DeleteUser(string authorization)
+        public async Task<IActionResult> DeleteUser([FromHeader(Name = "Authorization")] string authorization)
         {
-            var userId = GetUserIdFromAuthorizationHeader(authorization);
-            if (userId == null)
+            var user = await ValidateToken(authorization);
+            if (user == null)
             {
                 return Unauthorized("Invalid JWT token.");
             }
 
-            var deleteResult = await _users.DeleteOneAsync(u => u.Id == userId);
+            var deleteResult = await _users.DeleteOneAsync(u => u.Id == user.Id);
 
             if (deleteResult.DeletedCount == 0)
             {
@@ -129,21 +147,6 @@ namespace PeaceReportServer.Controllers
             }
 
             return Ok(new { message = "User account deleted successfully." });
-        }
-
-        private string GetUserIdFromAuthorizationHeader(string authorization)
-        {
-            if (string.IsNullOrEmpty(authorization) || !authorization.StartsWith("Bearer "))
-            {
-                return null;
-            }
-
-            var token = authorization.Substring("Bearer ".Length).Trim();
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtToken = tokenHandler.ReadJwtToken(token);
-
-            var userIdClaim = jwtToken?.Claims?.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Sub);
-            return userIdClaim?.Value;
         }
     }
 }

@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { getUserInfoAPI, UserInfoResponse } from '@/src/api';
-import ErrorModal from '@/src/components/modals/Modal';
+import { useState, useEffect } from 'react';
+import { getUserInfoAPI, IUserInfoResponse } from '@/src/api';
+import Modal from '@/src/components/modals/Modal';
 
 type NavbarProps = {};
 
 const Nav: React.FC<NavbarProps> = () => {
   const router = useRouter();
-  const [userInfo, setUserInfo] = useState<UserInfoResponse | null>(null);
+  const [userInfo, setUserInfo] = useState<IUserInfoResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +35,7 @@ const Nav: React.FC<NavbarProps> = () => {
   return (
     <>
       {error && (
-        <ErrorModal errorMessage={error} onClose={() => setError(null)} />
+        <Modal type="error" message={error} onClose={() => setError(null)} />
       )}
       <nav className="fixed bottom-0 left-0 w-full bg-white shadow-xl z-50 md:top-0 md:bottom-auto md:flex md:justify-between md:items-center p-4 md:p-2">
         <div className="hidden md:flex md:justify-start md:w-auto">

@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import PublicNav from '@/src/components/navBars/PublicNav';
-import { PublicTextInput } from '@/src/components/forms/PublicTextInput';
-import PublicButton from '@/src/components/buttons/publicButton';
-import { LoginData, LoginResponse, LoginAPI } from '@/src/api';
+import PublicTextInput from '@/src/components/forms/PublicTextInput';
+import PublicButton from '@/src/components/buttons/PublicButton';
+import { ILoginData, ILoginResponse, LoginAPI } from '@/src/api';
+import Modal from '@/src/components/modals/Modal';
 
 const Login: React.FC = () => {
-  const [formData, setFormData] = useState<LoginData>({
+  const [formData, setFormData] = useState<ILoginData>({
     login: '',
     password: '',
   });
 
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState<boolean>(false);
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,13 +31,21 @@ const Login: React.FC = () => {
     setError(null);
 
     try {
-      const response: LoginResponse = await LoginAPI(formData);
+      const response: ILoginResponse = await LoginAPI(formData);
       localStorage.setItem('token', response.token);
       setMessage(response.message);
+      setShowModal(true);
       router.push('/myview');
     } catch (err) {
       setError(err.message);
+      setShowModal(true);
     }
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setMessage(null);
+    setError(null);
   };
 
   return (
@@ -56,8 +66,13 @@ const Login: React.FC = () => {
             <PublicTextInput id="password" name="password" type="password" placeholder="*****" label="Password*: " value={formData.password} onChange={handleChange} required />
             <PublicButton text="Login" type="submit" />
           </form>
-          {message && <p className="text-green-500">{message}</p>}
-          {error && <p className="text-red-500">{error}</p>}
+          {showModal && (
+            <Modal
+              type={error ? 'error' : 'success'}
+              message={error || message || ''}
+              onClose={handleCloseModal}
+            />
+          )}
         </div>
       </div>
     </main>
