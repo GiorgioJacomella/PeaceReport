@@ -15,7 +15,7 @@ The frontend is built using Next.js. Key packages include:
 - **React**: Library for building the user interface.
 - **Tailwind CSS**: For styling the application.
 
-You can find the complete list of dependencies in the `Client/package.json` file.
+You can find the complete list of dependencies in the `Client/peace-report/package.json` file.
 
 ### Installation
 
