@@ -49,8 +49,9 @@ Example configuration for MongoDB:
 ```sh
 {
 ///Other configurations
-  "ConnectionStrings": {
-    "MongoDb": "mongodb://<username>:<password>@<host>:<port>/<database>"
+  "MongoDB": {
+    "ConnectionString": "mongodb://username:Password@DB-Adress:Port/DB-Name",
+    "DatabaseName": "DB-Name"
   }
 }
 
