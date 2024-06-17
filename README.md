@@ -62,7 +62,6 @@ To set up a MongoDB database with read and write rights, follow these steps:
 Create a new user with read and write permissions:
 
 ```sh
-Code kopieren
 use admin
 db.createUser({
   user: "peaceReportUser",
