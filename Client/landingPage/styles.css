@@ -7,7 +7,7 @@
 
 body {
     font-family: Arial, sans-serif;
-    padding-top: 60px; /* Adjust according to the height of the navbar */
+    padding-top: 60px; 
 }
 
 /* Navigation Styles */
@@ -15,11 +15,11 @@ nav {
     background-color: #ffffff;
     color: #0369a1;
     padding: 10px;
-    position: fixed; /* Make navbar fixed */
+    position: fixed; 
     width: 100%;
     top: 0;
     z-index: 1000;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Optional shadow for better visibility */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
 }
 
 .nav-container {
@@ -29,7 +29,7 @@ nav {
 }
 
 .logo img {
-    height: 50px; /* Adjust height if necessary */
+    height: 50px; 
 }
 
 .nav-links {
@@ -74,7 +74,7 @@ nav {
 
 /* Hero Section Styles */
 header {
-    background-image: url('./heroImg.png');
+    background-image: url('./heroImg.webp');
     background-size: cover;
     background-position: center;
     height: 100vh;
